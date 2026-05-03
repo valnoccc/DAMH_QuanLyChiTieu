@@ -1,0 +1,17 @@
+# Dependency folders
+node_modules/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.local
+
+# Build folders
+dist/
+build/
+runs/       # Thư mục sinh ra khi train YOLO
+
+# System files
+.DS_Store
+Thumbs.db

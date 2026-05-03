@@ -1,0 +1,14 @@
+{
+  "name": "smart-finance-ai",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start:backend": "cd backend-nestjs && npm run start:dev",
+    "start:ai": "cd ai-engine && venv\\Scripts\\activate && python src/main.py",
+    "dev": "npx concurrently \"npm run start:backend\" \"npm run start:ai\""
+  }
+}

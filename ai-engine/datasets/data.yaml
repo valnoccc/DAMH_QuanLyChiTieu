@@ -1,0 +1,6 @@
+path: ./datasets        # Đường dẫn gốc tới thư mục data
+train: train/images     # Đường dẫn tới ảnh học
+val: val/images         # Đường dẫn tới ảnh kiểm tra
+
+nc: 3                   # Số lượng nhãn (Number of Classes)
+names: ['Store_Name', 'Date', 'Total_Amount'] # Tên các nhãn
