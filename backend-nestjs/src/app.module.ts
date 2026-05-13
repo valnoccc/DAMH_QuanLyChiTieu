@@ -1,23 +1,34 @@
+// File: src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { User } from './auth/entities/auth.entity';
 
 @Module({
   imports: [
-    // 1. Để đọc được các biến từ file .env (nếu có)
-    ConfigModule.forRoot({ isGlobal: true }),
-
-    // 2. Cấu hình kết nối MySQL (WampServer)
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '3306'),
-      username: process.env.DB_USERNAME || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'smart_finance_db',
-      entities: [],
-      synchronize: true,
+    // 1. Khai báo ConfigModule để đọc file .env toàn cục
+    ConfigModule.forRoot({
+      isGlobal: true,
     }),
+
+    // 2. Cấu hình TypeOrmModule theo kiểu Async để nhận biến từ ConfigService
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        entities: [User],
+        synchronize: false,
+      }),
+    }),
+
+    AuthModule,
   ],
 })
 export class AppModule { }
