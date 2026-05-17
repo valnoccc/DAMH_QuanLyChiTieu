@@ -5,4 +5,5 @@ torchaudio
 fastapi
 uvicorn
 python-multipart
-easyocr
+pytesseract
+opencv-python-headless

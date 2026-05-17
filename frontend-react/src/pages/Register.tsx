@@ -8,69 +8,53 @@ const Register: React.FC = () => {
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
         try {
-            await axiosInstance.post('/auth/register', {
-                email,
-                password,
-                fullName,
-            });
+            await axiosInstance.post('/auth/register', { email, password, fullName });
             alert('Đăng ký thành công! Vui lòng đăng nhập.');
             navigate('/login');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Có lỗi xảy ra khi đăng ký!');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="flex h-screen items-center justify-center bg-gray-100">
-            <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
-                <h2 className="mb-6 text-center text-2xl font-bold text-gray-800">Đăng Ký Tài Khoản</h2>
-                {error && <p className="mb-4 text-center text-sm text-red-500">{error}</p>}
-                <form onSubmit={handleRegister} className="space-y-4">
+        <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] px-4">
+            <div className="glass-card w-full max-w-md p-8 animate-fade-in text-center">
+                <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 text-3xl shadow-lg">💰</div>
+                <h2 className="mb-2 text-2xl font-bold text-white">Tạo tài khoản mới</h2>
+                <p className="mb-6 text-sm text-slate-400">Tham gia quản lý tài chính thông minh</p>
+                
+                {error && <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
+                
+                <form onSubmit={handleRegister} className="space-y-4 text-left">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Họ và tên</label>
-                        <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            required
-                        />
+                        <label className="mb-1.5 block text-sm font-medium text-slate-300">Họ và tên</label>
+                        <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="input-field" required placeholder="Nguyễn Văn A" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            required
-                        />
+                        <label className="mb-1.5 block text-sm font-medium text-slate-300">Email</label>
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field" required placeholder="email@example.com" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="mt-1 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            required
-                        />
+                        <label className="mb-1.5 block text-sm font-medium text-slate-300">Mật khẩu</label>
+                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field" required placeholder="••••••••" minLength={6} />
                     </div>
-                    <button
-                        type="submit"
-                        className="w-full rounded-md bg-blue-600 py-2 text-white transition hover:bg-blue-700"
-                    >
-                        Đăng Ký
+                    <button type="submit" disabled={loading} className="btn-primary mt-2 w-full py-3 text-base">
+                        {loading ? 'Đang xử lý...' : 'Đăng Ký'}
                     </button>
                 </form>
-                <p className="mt-4 text-center text-sm text-gray-600">
-                    Đã có tài khoản? <Link to="/login" className="text-blue-600 hover:underline">Đăng nhập</Link>
+                
+                <p className="mt-6 text-sm text-slate-400">
+                    Đã có tài khoản? <Link to="/login" className="font-semibold text-indigo-400 hover:text-indigo-300">Đăng nhập ngay</Link>
                 </p>
             </div>
         </div>
