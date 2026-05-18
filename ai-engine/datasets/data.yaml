@@ -1,13 +1,15 @@
+names:
+- Date
+- Store_Name
+- amount_number
+- label_total
+nc: 4
+roboflow:
+  license: CC BY 4.0
+  project: nhan_dien_hoa_don_v6_clean
+  url: https://universe.roboflow.com/vans-workspace-wzeag/nhan_dien_hoa_don_v6_clean/dataset/1
+  version: 1
+  workspace: vans-workspace-wzeag
+test: ../test/images
 train: ../train/images
 val: ../valid/images
-test: ../test/images
-
-nc: 3
-names: ['Date', 'Store_Name', 'Total_Amount']
-
-roboflow:
-  workspace: vans-workspace-wzeag
-  project: nhan-dien-hoa-don-fhh51
-  version: 2
-  license: CC BY 4.0
-  url: https://universe.roboflow.com/vans-workspace-wzeag/nhan-dien-hoa-don-fhh51/dataset/2
