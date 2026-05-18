@@ -10,6 +10,14 @@ interface Props {
 const fmt = (amount: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
+// Hàm format ngày tháng an toàn, chống lỗi Invalid Date
+const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString('vi-VN');
+};
+
 const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
     const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
 
@@ -18,16 +26,16 @@ const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
     return (
         <div className="glass-card animate-fade-in" style={{ padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
                     Danh sách giao dịch
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     {(['all', 'expense', 'income'] as const).map(f => (
                         <button key={f} onClick={() => setFilter(f)} style={{
                             padding: '5px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            border: filter === f ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)',
-                            background: filter === f ? 'rgba(99,102,241,0.2)' : 'transparent',
-                            color: filter === f ? '#6366f1' : '#64748b',
+                            border: filter === f ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            background: filter === f ? 'rgba(99,102,241,0.15)' : 'transparent',
+                            color: filter === f ? 'var(--accent)' : 'var(--text-muted)',
                             transition: 'all 0.2s',
                         }}>
                             {f === 'all' ? 'Tất cả' : f === 'expense' ? 'Chi tiêu' : 'Thu nhập'}
@@ -37,9 +45,9 @@ const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Đang tải...</div>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Đang tải...</div>
             ) : filtered.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#475569', fontSize: 14 }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
                     <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
                     Chưa có giao dịch nào
                 </div>
@@ -48,12 +56,16 @@ const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
                     {filtered.map(expense => {
                         const isIncome = expense.type === 'income';
                         const color = expense.category?.color || '#6366f1';
-                        
+
+                        // Xử lý lấy tên biến linh hoạt đề phòng Backend đổi tên từ storeName sang title
+                        const displayName = (expense as any).title || expense.storeName || 'Không có tên';
+                        const displayDate = (expense as any).date || expense.transactionDate;
+
                         return (
                             <div key={expense.id} style={{
                                 display: 'flex', alignItems: 'center', gap: 14,
                                 padding: '12px 0',
-                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                borderBottom: '1px solid var(--border)', // Đổi màu viền bottom
                                 transition: 'background 0.15s',
                             }}>
                                 {/* Icon danh mục */}
@@ -67,14 +79,14 @@ const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
 
                                 {/* Thông tin */}
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {expense.storeName}
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {displayName}
                                     </div>
-                                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                                        {expense.category?.name || 'Khác'} · {new Date(expense.transactionDate).toLocaleDateString('vi-VN')}
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {expense.category?.name || 'Khác'} · {formatDate(displayDate)}
                                     </div>
                                     {expense.description && (
-                                        <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                                             {expense.description}
                                         </div>
                                     )}
@@ -83,7 +95,7 @@ const ExpenseTable: React.FC<Props> = ({ expenses, onDelete, loading }) => {
                                 {/* Số tiền */}
                                 <div style={{
                                     fontSize: 15, fontWeight: 700, flexShrink: 0,
-                                    color: isIncome ? '#10b981' : '#f87171',
+                                    color: isIncome ? 'var(--success)' : 'var(--danger)',
                                 }}>
                                     {isIncome ? '+' : '-'}{fmt(expense.amount)}
                                 </div>

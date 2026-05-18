@@ -1,13 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-* { font-family: 'Inter', sans-serif; }
+* {
+  font-family: 'Inter', sans-serif;
+}
 
+/* ================================
+   1. GIAO DIỆN TỐI (MẶC ĐỊNH) 
+   ================================ */
 :root {
   --bg-primary: #0a0f1e;
   --bg-secondary: #111827;
-  --bg-card: rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.08);
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.08);
   --text-primary: #f1f5f9;
   --text-muted: #64748b;
   --accent: #6366f1;
@@ -17,21 +22,51 @@
   --warning: #f59e0b;
 }
 
+/* ================================
+   2. GIAO DIỆN SÁNG 
+   ================================ */
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  /* Nền trang sáng */
+  --bg-secondary: #ffffff;
+  /* Nền form/modal trắng tinh */
+  --bg-card: rgba(0, 0, 0, 0.03);
+  /* Kính mờ xám nhạt */
+  --border: rgba(0, 0, 0, 0.1);
+  /* Viền xám nhạt */
+  --text-primary: #0f172a;
+  /* Chữ đen đậm */
+  --text-muted: #475569;
+  /* Chữ xám */
+}
+
+/* Ép màu nền chuẩn cho toàn bộ trang có hiệu ứng mượt */
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
 
 .glass-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   backdrop-filter: blur(12px);
   border-radius: 16px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .btn-primary {
@@ -45,33 +80,52 @@ body {
   cursor: pointer;
   border: none;
 }
-.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
 
 .btn-danger {
-  background: rgba(239,68,68,0.15);
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 13px;
   transition: all 0.2s;
   cursor: pointer;
-  border: 1px solid rgba(239,68,68,0.2);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
-.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
 
 .input-field {
   width: 100%;
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-card);
+  /* Đã đổi sang biến */
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 14px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+  color-scheme: dark light;
+  /* Hô biến lịch popup đổi màu theo theme */
 }
-.input-field:focus { border-color: #6366f1; }
-.input-field option { background: #1e293b; }
+
+.input-field:focus {
+  border-color: var(--accent);
+}
+
+.input-field option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Đã đổi sang biến */
 
 .sidebar-link {
   display: flex;
@@ -86,29 +140,44 @@ body {
   cursor: pointer;
   text-decoration: none;
 }
-.sidebar-link:hover, .sidebar-link.active {
-  background: rgba(99,102,241,0.15);
-  color: #6366f1;
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.animate-fade-in { animation: fadeIn 0.3s ease; }
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease;
+}
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.5);
+  /* Sáng hay tối thì overlay đen mờ đều đẹp */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
   padding: 16px;
 }
+
 .modal-box {
-  background: #111827;
+  background: var(--bg-secondary);
+  /* Đã đổi sang biến */
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 28px;
@@ -117,4 +186,5 @@ body {
   max-height: 90vh;
   overflow-y: auto;
   animation: fadeIn 0.25s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }

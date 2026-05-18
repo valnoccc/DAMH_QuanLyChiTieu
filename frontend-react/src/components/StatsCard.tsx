@@ -10,7 +10,7 @@ interface Props {
 }
 
 const StatsCard: React.FC<Props> = ({ title, value, subtitle, icon, color, trend }) => {
-    const trendColor = trend === 'up' ? '#10b981' : trend === 'down' ? '#ef4444' : '#64748b';
+    const trendColor = trend === 'up' ? 'var(--success)' : trend === 'down' ? 'var(--danger)' : 'var(--text-muted)';
 
     return (
         <div className="glass-card animate-fade-in" style={{ padding: 20, flex: 1, minWidth: 180 }}>
@@ -28,11 +28,13 @@ const StatsCard: React.FC<Props> = ({ title, value, subtitle, icon, color, trend
                     </span>
                 )}
             </div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>
+            {/* Đổi mã màu cứng thành var(--text-primary) */}
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4, transition: 'color 0.3s ease' }}>
                 {value}
             </div>
-            <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{title}</div>
-            {subtitle && <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>{subtitle}</div>}
+            {/* Đổi mã màu cứng thành var(--text-muted) */}
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, transition: 'color 0.3s ease' }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, transition: 'color 0.3s ease' }}>{subtitle}</div>}
         </div>
     );
 };

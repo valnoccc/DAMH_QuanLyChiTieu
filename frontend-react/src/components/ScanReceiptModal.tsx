@@ -1,18 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { receiptsApi } from '../api/receipts';
 import type { ScanResult } from '../api/receipts';
 import { expensesApi } from '../api/expenses';
+import { categoriesApi, type Category } from '../api/categories';
 
 interface Props { onClose: () => void; onSuccess: (savedDate?: string) => void; }
-
-const fmtLabel = (label: string) => {
-    const map: Record<string, string> = {
-        Store_Name: '🏪 Tên cửa hàng',
-        Date: '📅 Ngày',
-        Total_Amount: '💰 Tổng tiền',
-    };
-    return map[label] || label;
-};
 
 // Chuyển đổi từ dd/mm/yyyy → yyyy-mm-dd cho MySQL
 const parseDate = (dateStr: string): string => {
@@ -22,7 +14,7 @@ const parseDate = (dateStr: string): string => {
     // Chuyển từ dd/mm/yyyy
     const parts = dateStr.split('/');
     if (parts.length === 3) {
-        return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
     return new Date().toISOString().split('T')[0];
 };
@@ -37,10 +29,32 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     const [scanned, setScanned] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
 
+    // States cho danh mục
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [categoryId, setCategoryId] = useState<number | ''>('');
+
     // Form states
     const [formTitle, setFormTitle] = useState('');
-    const [formAmount, setFormAmount] = useState<number>(0);
+    const [formAmount, setFormAmount] = useState<number | string>('');
     const [formDate, setFormDate] = useState('');
+
+    // Fetch Categories ngay khi mở modal
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await categoriesApi.getAll();
+                const expenseCats = res.data.filter((c: Category) => c.type === 'expense' || c.type === 'both');
+                setCategories(expenseCats);
+
+                if (expenseCats.length > 0) {
+                    setCategoryId(expenseCats[0].id);
+                }
+            } catch (err) {
+                console.error("Lỗi lấy danh mục:", err);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0];
@@ -62,12 +76,16 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
             setResults(scanData);
 
             // Tìm và pre-fill form
-            const totalResult  = scanData.find(r => r.label === 'Total_Amount');
-            const titleResult  = scanData.find(r => r.label === 'Store_Name');
-            const dateResult   = scanData.find(r => r.label === 'Date');
+            const totalResult = scanData.find(r => r.label === 'Total_Amount');
+            const titleResult = scanData.find(r => r.label === 'Store_Name');
+            const dateResult = scanData.find(r => r.label === 'Date');
 
             setFormTitle(titleResult?.text || 'Hóa đơn scan');
-            setFormAmount(parseFloat((totalResult?.text || '0').replace(/[^0-9.]/g, '')) || 0);
+            let rawText = totalResult?.text || '';
+            rawText = rawText.replace(/[,.]00$/, ''); // 1. Chặt bỏ đuôi .00 hoặc ,00 (nếu có)
+            rawText = rawText.replace(/[^0-9]/g, ''); // 2. Xóa hết các dấu phẩy, chấm hàng nghìn còn lại
+
+            setFormAmount(Number(rawText) || '');
             setFormDate(parseDate(dateResult?.text || ''));
             setScanned(true);
         } catch (err: any) {
@@ -78,23 +96,34 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     };
 
     const handleSaveAsExpense = async () => {
+        if (!categoryId) {
+            setError('Vui lòng chọn danh mục!');
+            return;
+        }
+
         setSaving(true);
         try {
             await expensesApi.create({
                 title: formTitle,
-                amount: formAmount,
+                amount: Number(formAmount) || 0,
                 date: formDate,
+                categoryId: Number(categoryId),
                 description: `AI scan từ hóa đơn.`,
                 type: 'expense',
             });
             onSuccess(formDate);
             onClose();
         } catch (err: any) {
-            setError('Lỗi khi lưu giao dịch');
+            const backendError = err.response?.data?.message;
+            const errorMessage = Array.isArray(backendError) ? backendError[0] : backendError;
+
+            setError(errorMessage || 'Lỗi hệ thống khi lưu giao dịch');
+            console.error("Chi tiết lỗi Backend:", err.response?.data);
         } finally {
             setSaving(false);
         }
     };
+
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -139,38 +168,62 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>
                             ✏️ Vui lòng kiểm tra và chỉnh sửa nếu AI nhận diện sai:
                         </div>
-                        
+
                         <div>
                             <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>🏪 Tên cửa hàng</label>
-                            <input 
-                                type="text" 
-                                className="input-field" 
-                                value={formTitle} 
-                                onChange={e => setFormTitle(e.target.value)} 
+                            <input
+                                type="text"
+                                className="input-field"
+                                value={formTitle}
+                                onChange={e => setFormTitle(e.target.value)}
                                 style={{ width: '100%' }}
                             />
                         </div>
 
                         <div>
                             <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>💰 Tổng tiền (VNĐ)</label>
-                            <input 
-                                type="number" 
-                                className="input-field" 
-                                value={formAmount} 
-                                onChange={e => setFormAmount(Number(e.target.value))} 
+                            <input
+                                type="number"
+                                className="input-field"
+                                value={formAmount}
+                                onChange={e => {
+                                    let val = e.target.value;
+                                    // Xóa tất cả các số 0 thừa ở đầu nếu phía sau nó là một chữ số
+                                    // (Ví dụ: "01" -> "1", "005" -> "5", nhưng gõ "0." thì vẫn giữ nguyên để bấm số thập phân)
+                                    val = val.replace(/^0+(?=\d)/, '');
+                                    setFormAmount(val);
+                                }}
                                 style={{ width: '100%' }}
                             />
                         </div>
 
                         <div>
                             <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>📅 Ngày giao dịch</label>
-                            <input 
-                                type="date" 
-                                className="input-field" 
-                                value={formDate} 
-                                onChange={e => setFormDate(e.target.value)} 
+                            <input
+                                type="date"
+                                className="input-field"
+                                value={formDate}
+                                onChange={e => setFormDate(e.target.value)}
                                 style={{ width: '100%' }}
                             />
+                        </div>
+
+                        {/* Ô Chọn Danh Mục Mới */}
+                        <div>
+                            <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>🏷️ Danh mục</label>
+                            <select
+                                className="input-field"
+                                value={categoryId}
+                                onChange={(e) => setCategoryId(Number(e.target.value))}
+                                style={{ width: '100%', cursor: 'pointer' }}
+                            >
+                                <option value="" disabled>-- Chọn danh mục --</option>
+                                {categories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.icon} {cat.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 )}

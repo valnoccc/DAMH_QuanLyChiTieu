@@ -1,4 +1,5 @@
 // File: src/pages/Dashboard.tsx
+
 import React, { useEffect, useState, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import StatsCard from '../components/StatsCard';
@@ -6,8 +7,10 @@ import ExpenseChart from '../components/ExpenseChart';
 import ExpenseTable from '../components/ExpenseTable';
 import AddExpenseModal from '../components/AddExpenseModal';
 import ScanReceiptModal from '../components/ScanReceiptModal';
+import MonthYearPicker from '../components/MonthYearPicker'; // <-- IMPORT COMPONENT MỚI Ở ĐÂY
 import { expensesApi } from '../api/expenses';
 import type { Expense, SummaryStats } from '../api/expenses';
+import ThemeToggle from '../components/ThemeToggle';
 
 const fmt = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -67,16 +70,18 @@ const Dashboard: React.FC = () => {
 
                     {/* Month/Year + Actions */}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <select className="input-field" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m}>Tháng {m}</option>
-                            ))}
-                        </select>
-                        <select className="input-field" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
-                            {[2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026].map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
+
+                        {/* THAY THẾ 2 THẺ <select> CŨ BẰNG COMPONENT NÀY */}
+                        <MonthYearPicker
+                            month={month}
+                            year={year}
+                            onChange={(m, y) => {
+                                setMonth(m);
+                                setYear(y);
+                            }}
+                        />
+                        {/* ----------------------------------------------- */}
+                        <ThemeToggle />
                         <button className="btn-primary" onClick={() => setShowScan(true)}>
                             📷 Scan hóa đơn
                         </button>

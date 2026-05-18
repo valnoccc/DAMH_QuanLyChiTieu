@@ -3,7 +3,7 @@ import os
 # =====================================================================
 # CHÚ Ý: Sửa đường dẫn này trỏ đúng đến thư mục dataset bạn vừa giải nén
 # =====================================================================
-dataset_path = r"D:\VSC\dataset"
+dataset_path = r"D:\DAMH_QuanLyChiTieu\ai-engine\dataset"
 
 sub_folders = ["train", "valid", "test"]
 total_deleted = 0

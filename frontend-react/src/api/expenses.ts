@@ -13,11 +13,11 @@ export interface Expense {
 }
 
 export interface CreateExpensePayload {
-    storeName: string;
+    title: string;
     amount: number;
     categoryId?: number;
     description?: string;
-    transactionDate: string;
+    date: string;
     type?: 'expense' | 'income';
     receiptImageUrl?: string;
 }
