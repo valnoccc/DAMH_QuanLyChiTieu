@@ -3,15 +3,28 @@ import { receiptsApi } from '../api/receipts';
 import type { ScanResult } from '../api/receipts';
 import { expensesApi } from '../api/expenses';
 
-interface Props { onClose: () => void; onSuccess: () => void; }
+interface Props { onClose: () => void; onSuccess: (savedDate?: string) => void; }
 
 const fmtLabel = (label: string) => {
     const map: Record<string, string> = {
-        store_name: '🏪 Tên cửa hàng',
-        date: '📅 Ngày',
-        total: '💰 Tổng tiền',
+        Store_Name: '🏪 Tên cửa hàng',
+        Date: '📅 Ngày',
+        Total_Amount: '💰 Tổng tiền',
     };
     return map[label] || label;
+};
+
+// Chuyển đổi từ dd/mm/yyyy → yyyy-mm-dd cho MySQL
+const parseDate = (dateStr: string): string => {
+    if (!dateStr) return new Date().toISOString().split('T')[0];
+    // Nếu đã là yyyy-mm-dd thì giữ nguyên
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // Chuyển từ dd/mm/yyyy
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    }
+    return new Date().toISOString().split('T')[0];
 };
 
 const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
@@ -23,6 +36,11 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     const [error, setError] = useState('');
     const [scanned, setScanned] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    // Form states
+    const [formTitle, setFormTitle] = useState('');
+    const [formAmount, setFormAmount] = useState<number>(0);
+    const [formDate, setFormDate] = useState('');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0];
@@ -40,7 +58,17 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         setError('');
         try {
             const res = await receiptsApi.scan(file);
-            setResults(res.data.data || []);
+            const scanData: ScanResult[] = res.data.data || [];
+            setResults(scanData);
+
+            // Tìm và pre-fill form
+            const totalResult  = scanData.find(r => r.label === 'Total_Amount');
+            const titleResult  = scanData.find(r => r.label === 'Store_Name');
+            const dateResult   = scanData.find(r => r.label === 'Date');
+
+            setFormTitle(titleResult?.text || 'Hóa đơn scan');
+            setFormAmount(parseFloat((totalResult?.text || '0').replace(/[^0-9.]/g, '')) || 0);
+            setFormDate(parseDate(dateResult?.text || ''));
             setScanned(true);
         } catch (err: any) {
             setError(err.response?.data?.message || 'AI Engine chưa khởi động hoặc có lỗi xảy ra');
@@ -50,24 +78,16 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
     };
 
     const handleSaveAsExpense = async () => {
-        const totalResult = results.find(r => r.label === 'total');
-        const titleResult = results.find(r => r.label === 'store_name');
-        const dateResult = results.find(r => r.label === 'date');
-
-        const amount = parseFloat((totalResult?.text || '0').replace(/[^0-9.]/g, '')) || 0;
-        const title = titleResult?.text || 'Hóa đơn scan';
-        const date = dateResult?.text || new Date().toISOString().split('T')[0];
-
         setSaving(true);
         try {
             await expensesApi.create({
-                storeName: title,
-                amount,
-                transactionDate: date,
-                description: `AI scan từ hóa đơn. Ngày gốc: ${date}`,
+                title: formTitle,
+                amount: formAmount,
+                date: formDate,
+                description: `AI scan từ hóa đơn.`,
                 type: 'expense',
             });
-            onSuccess();
+            onSuccess(formDate);
             onClose();
         } catch (err: any) {
             setError('Lỗi khi lưu giao dịch');
@@ -113,26 +133,45 @@ const ScanReceiptModal: React.FC<Props> = ({ onClose, onSuccess }) => {
                     <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
                 </div>
 
-                {/* Kết quả AI */}
+                {/* Form chỉnh sửa kết quả AI */}
                 {scanned && results.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>
-                            ✅ Kết quả nhận diện ({results.length} trường):
+                    <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>
+                            ✏️ Vui lòng kiểm tra và chỉnh sửa nếu AI nhận diện sai:
                         </div>
-                        {results.map((r, i) => (
-                            <div key={i} style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '10px 14px', marginBottom: 6,
-                                background: 'rgba(99,102,241,0.08)', borderRadius: 10,
-                                border: '1px solid rgba(99,102,241,0.15)',
-                            }}>
-                                <div>
-                                    <span style={{ fontSize: 12, color: '#8b5cf6', fontWeight: 600 }}>{fmtLabel(r.label)}</span>
-                                    <span style={{ fontSize: 11, color: '#475569', marginLeft: 8 }}>({(r.confidence * 100).toFixed(0)}%)</span>
-                                </div>
-                                <span style={{ fontSize: 14, fontWeight: 600, color: '#f1f5f9' }}>{r.text || '—'}</span>
-                            </div>
-                        ))}
+                        
+                        <div>
+                            <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>🏪 Tên cửa hàng</label>
+                            <input 
+                                type="text" 
+                                className="input-field" 
+                                value={formTitle} 
+                                onChange={e => setFormTitle(e.target.value)} 
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>💰 Tổng tiền (VNĐ)</label>
+                            <input 
+                                type="number" 
+                                className="input-field" 
+                                value={formAmount} 
+                                onChange={e => setFormAmount(Number(e.target.value))} 
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: 12, color: '#8b5cf6', fontWeight: 600, marginBottom: 6 }}>📅 Ngày giao dịch</label>
+                            <input 
+                                type="date" 
+                                className="input-field" 
+                                value={formDate} 
+                                onChange={e => setFormDate(e.target.value)} 
+                                style={{ width: '100%' }}
+                            />
+                        </div>
                     </div>
                 )}
 

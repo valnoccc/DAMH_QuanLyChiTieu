@@ -26,13 +26,13 @@ export class ExpensesService {
       .createQueryBuilder('expense')
       .leftJoinAndSelect('expense.category', 'category')
       .where('expense.user_id = :userId', { userId })
-      .orderBy('expense.transaction_date', 'DESC');
+      .orderBy('expense.date', 'DESC');
 
     if (month && year) {
-      query.andWhere('MONTH(expense.transaction_date) = :month', { month });
-      query.andWhere('YEAR(expense.transaction_date) = :year', { year });
+      query.andWhere('MONTH(expense.date) = :month', { month });
+      query.andWhere('YEAR(expense.date) = :year', { year });
     } else if (year) {
-      query.andWhere('YEAR(expense.transaction_date) = :year', { year });
+      query.andWhere('YEAR(expense.date) = :year', { year });
     }
 
     return query.getMany();
@@ -64,7 +64,7 @@ export class ExpensesService {
       .createQueryBuilder('e')
       .select('SUM(e.amount)', 'total')
       .where('e.user_id = :userId AND e.type = :type', { userId, type: ExpenseType.EXPENSE })
-      .andWhere('MONTH(e.transaction_date) = :month AND YEAR(e.transaction_date) = :year', { month, year })
+      .andWhere('MONTH(e.date) = :month AND YEAR(e.date) = :year', { month, year })
       .getRawOne();
 
     // Tổng thu nhập tháng
@@ -72,7 +72,7 @@ export class ExpensesService {
       .createQueryBuilder('e')
       .select('SUM(e.amount)', 'total')
       .where('e.user_id = :userId AND e.type = :type', { userId, type: ExpenseType.INCOME })
-      .andWhere('MONTH(e.transaction_date) = :month AND YEAR(e.transaction_date) = :year', { month, year })
+      .andWhere('MONTH(e.date) = :month AND YEAR(e.date) = :year', { month, year })
       .getRawOne();
 
     // Chi tiêu theo danh mục trong tháng
@@ -81,7 +81,7 @@ export class ExpensesService {
       .leftJoin('e.category', 'c')
       .select(['c.name AS name', 'c.icon AS icon', 'c.color AS color', 'SUM(e.amount) AS total'])
       .where('e.user_id = :userId AND e.type = :type', { userId, type: ExpenseType.EXPENSE })
-      .andWhere('MONTH(e.transaction_date) = :month AND YEAR(e.transaction_date) = :year', { month, year })
+      .andWhere('MONTH(e.date) = :month AND YEAR(e.date) = :year', { month, year })
       .groupBy('c.id')
       .getRawMany();
 
@@ -89,13 +89,13 @@ export class ExpensesService {
     const last6Months = await this.expenseRepository
       .createQueryBuilder('e')
       .select([
-        'YEAR(e.transaction_date) AS year',
-        'MONTH(e.transaction_date) AS month',
+        'YEAR(e.date) AS year',
+        'MONTH(e.date) AS month',
         'SUM(e.amount) AS total',
       ])
       .where('e.user_id = :userId AND e.type = :type', { userId, type: ExpenseType.EXPENSE })
-      .andWhere('e.transaction_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)')
-      .groupBy('YEAR(e.transaction_date), MONTH(e.transaction_date)')
+      .andWhere('e.date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)')
+      .groupBy('YEAR(e.date), MONTH(e.date)')
       .orderBy('year, month')
       .getRawMany();
 
@@ -103,7 +103,7 @@ export class ExpensesService {
     const count = await this.expenseRepository
       .createQueryBuilder('e')
       .where('e.user_id = :userId', { userId })
-      .andWhere('MONTH(e.transaction_date) = :month AND YEAR(e.transaction_date) = :year', { month, year })
+      .andWhere('MONTH(e.date) = :month AND YEAR(e.date) = :year', { month, year })
       .getCount();
 
     return {

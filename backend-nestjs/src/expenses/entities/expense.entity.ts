@@ -34,7 +34,7 @@ export class Expense {
   category: Category;
 
   @Column({ name: 'title', type: 'varchar', length: 255 })
-  storeName: string;
+  title: string;
 
   @Column({ type: 'decimal', precision: 15, scale: 2 })
   amount: number;
@@ -42,8 +42,8 @@ export class Expense {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ name: 'date', type: 'date' })
-  transactionDate: string;
+  @Column({ name: 'transaction_date', type: 'date' })
+  date: string;
 
   @Column({
     type: 'enum',
