@@ -1,14 +1,15 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-    constructor() {
+    constructor(private configService: ConfigService) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: 'MA_KHOA_BIMAT_123', // Khóa này phải khớp y hệt khóa trong auth.module.ts
+            secretOrKey: configService.get<string>('JWT_SECRET') || 'FALLBACK_SECRET_CHANGE_ME',
         });
     }
 

@@ -1,20 +1,26 @@
 from ultralytics import YOLO
 import torch
 
+# MẸO ĐỂ FIX LỖI GPU RTX 30-Series:
+# Tắt CuDNN sẽ ép PyTorch dùng thuật toán thuần của CUDA thay vì thư viện CuDNN bị lỗi
+torch.backends.cudnn.enabled = False
+torch.backends.cudnn.benchmark = False
+
 def train_model():
-    # Kiểm tra GPU
     device = 0 if torch.cuda.is_available() else 'cpu'
-    print(f"--- Đang train trên thiết bị: {device} ---")
+    print(f"--- Đang train trên thiết bị: {device} (CuDNN Disabled) ---")
 
-    # Tải model YOLOv8 nano (nhẹ nhất, hợp với GTX 1650)
-    model = YOLO('yolov8n.pt')
+    model = YOLO('yolov8s.pt')
 
-    # Bắt đầu huấn luyện
     model.train(
         data='datasets/data.yaml', 
         epochs=50, 
-        imgsz=640, 
-        batch=8,           # 4GB VRAM của 1650 nên để mức 8 cho an toàn
+        imgsz=640,
+        batch=2,           
+        workers=0,         
+        amp=False,
+        optimizer='AdamW',
+        lr0=0.001,
         device=device,
         project='models',
         name='receipt_recognition'

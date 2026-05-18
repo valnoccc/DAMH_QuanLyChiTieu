@@ -1,31 +1,39 @@
+import os
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from ultralytics import YOLO
 import cv2
 import numpy as np
-import pytesseract
+from PIL import Image
+
+# Import VietOCR thay cho pytesseract
+from vietocr.tool.predictor import Predictor
+from vietocr.tool.config import Cfg
 
 # Import hàm gióng trục Y từ file predict.py
 from src.predict import find_matching_amount_box
 
 app = FastAPI(title="Smart Finance AI Engine")
 
-# CẤU HÌNH ĐƯỜNG DẪN TESSERACT (Sửa lại nếu cài ở ổ đĩa khác)
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-# Load mô hình YOLOv8 V2 (Phiên bản có 2 nhãn label_total và amount_number)
+# ==========================================
+# KHỞI TẠO CÁC MÔ HÌNH AI (Chạy 1 lần khi bật server)
+# ==========================================
+# 1. Load YOLOv8 V2
 model = YOLO("models/best_v3_2.pt") 
 
-def preprocess_image_for_ocr(image):
-    """Hàm tiền xử lý ảnh để Tesseract đọc chữ chuẩn hơn"""
-    image = cv2.resize(image, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return thresh
+# 2. Load VietOCR (Sử dụng kiến trúc vgg_transformer chuyên tiếng Việt)
+print("Đang nạp mô hình VietOCR...")
+config = Cfg.load_config_from_name('vgg_transformer')
+# Lưu ý: Nếu máy bạn chạy báo lỗi thiếu RAM/VRAM, hãy đổi 'cpu' thành 'cuda:0' (nếu có GPU) 
+# hoặc đổi 'vgg_transformer' thành 'vgg_seq2seq' cho nhẹ hơn.
+config['device'] = 'cpu' 
+vietocr_predictor = Predictor(config)
+print("Nạp VietOCR thành công!")
 
 @app.get("/")
-def read_root():
-    return {"message": "AI Engine is running!"}
+def health_check():
+    return {"status": "ok", "message": "AI Engine is running with YOLO & VietOCR!"}
 
 @app.post("/predict")
 async def predict_receipt(file: UploadFile = File(...)):
@@ -50,24 +58,29 @@ async def predict_receipt(file: UploadFile = File(...)):
             class_name = class_names[class_id]
             
             # Bỏ qua các nhãn liên quan đến Tổng tiền, chúng ta sẽ xử lý riêng
-            if class_name in ["label_total", "amount_number"]:
+            if class_name in ["label_total", "amount_number", "Total_Amount"]:
                 continue
                 
             x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
-            cropped_img = img[y1:y2, x1:x2]
+            
+            # Cắt ảnh
+            cropped_img = img[max(0, y1):y2, max(0, x1):x2]
             
             if cropped_img.size == 0:
                 continue
                 
-            processed_img = preprocess_image_for_ocr(cropped_img)
-            custom_config = r'--oem 3 --psm 7'
-            extracted_text = pytesseract.image_to_string(processed_img, lang='eng', config=custom_config).strip()
+            # ĐIỂM KHÁC BIỆT: VietOCR dùng định dạng ảnh PIL (RGB) thay vì OpenCV (BGR)
+            cropped_img_rgb = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB)
+            pil_img = Image.fromarray(cropped_img_rgb)
+            
+            # Đọc chữ bằng VietOCR
+            extracted_text = vietocr_predictor.predict(pil_img)
             
             detections.append({
                 "label": class_name,
                 "confidence": round(conf, 2),
                 "box": [x1, y1, x2, y2],
-                "text": extracted_text
+                "text": extracted_text.strip()
             })
 
         # ==========================================
@@ -79,23 +92,29 @@ async def predict_receipt(file: UploadFile = File(...)):
             x1, y1, x2, y2 = map(int, correct_amount_box)
             
             # Cắt ảnh có thêm padding để không bị mất viền số
-            padding = 3
+            padding = 5
             cropped_img = img[max(0, y1-padding) : y2+padding, max(0, x1-padding) : x2+padding]
             
             if cropped_img.size != 0:
-                processed_img = preprocess_image_for_ocr(cropped_img)
-                custom_config = r'--oem 3 --psm 7'
-                extracted_text = pytesseract.image_to_string(processed_img, lang='eng', config=custom_config).strip()
+                # Ép sang PIL Image cho VietOCR
+                cropped_img_rgb = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(cropped_img_rgb)
+                
+                # Đọc chữ bằng VietOCR
+                extracted_text = vietocr_predictor.predict(pil_img)
                 
                 # Nạp kết quả Tổng tiền đã chốt vào danh sách trả về
                 detections.append({
                     "label": "Total_Amount",
                     "confidence": 1.0, 
                     "box": [x1, y1, x2, y2],
-                    "text": extracted_text
+                    "text": extracted_text.strip()
                 })
 
         return JSONResponse(content={"status": "success", "data": detections})
 
     except Exception as e:
-        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)
+        return JSONResponse(
+            content={"status": "error", "message": str(e)},
+            status_code=500
+        )

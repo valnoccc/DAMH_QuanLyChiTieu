@@ -1,53 +1,163 @@
 // File: src/pages/Dashboard.tsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import Sidebar from '../components/Sidebar';
+import StatsCard from '../components/StatsCard';
+import ExpenseChart from '../components/ExpenseChart';
+import ExpenseTable from '../components/ExpenseTable';
+import AddExpenseModal from '../components/AddExpenseModal';
+import ScanReceiptModal from '../components/ScanReceiptModal';
+import { expensesApi } from '../api/expenses';
+import type { Expense, SummaryStats } from '../api/expenses';
+
+const fmt = (n: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 const Dashboard: React.FC = () => {
-    const navigate = useNavigate();
-    const [user, setUser] = useState<any>(null);
+    const now = new Date();
+    const [activePage, setActivePage] = useState('overview');
+    const [month, setMonth] = useState(now.getMonth() + 1);
+    const [year, setYear] = useState(now.getFullYear());
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [stats, setStats] = useState<SummaryStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [showAdd, setShowAdd] = useState(false);
+    const [showScan, setShowScan] = useState(false);
 
-    useEffect(() => {
-        const token = localStorage.getItem('access_token');
-        const userData = localStorage.getItem('user');
-
-        // Nếu không có token, đẩy ra ngoài trang login
-        if (!token) {
-            navigate('/login');
-        } else if (userData) {
-            setUser(JSON.parse(userData));
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [expRes, statRes] = await Promise.all([
+                expensesApi.getAll({ month, year }),
+                expensesApi.getSummary(month, year),
+            ]);
+            setExpenses(expRes.data);
+            setStats(statRes.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
         }
-    }, [navigate]);
+    }, [month, year]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        navigate('/login');
+    useEffect(() => { loadData(); }, [loadData]);
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Xóa giao dịch này?')) return;
+        await expensesApi.delete(id);
+        loadData();
     };
 
+    const topCategory = stats?.byCategory?.[0];
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            <nav className="bg-white shadow-sm">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                    <h1 className="text-xl font-bold text-blue-600">Smart Finance AI</h1>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-700">Xin chào, {user?.full_name || user?.email}</span>
-                        <button
-                            onClick={handleLogout}
-                            className="rounded bg-red-100 px-3 py-1 text-sm text-red-600 hover:bg-red-200"
-                        >
-                            Đăng xuất
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+            <Sidebar activePage={activePage} setActivePage={setActivePage} />
+
+            <main style={{ flex: 1, padding: '28px 32px', overflow: 'auto' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+                    <div>
+                        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', marginBottom: 4 }}>
+                            {activePage === 'overview' ? '📊 Tổng quan' : activePage === 'transactions' ? '💳 Giao dịch' : '📷 Scan hóa đơn'}
+                        </h1>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>
+                            Smart Finance AI — quản lý chi tiêu thông minh
+                        </div>
+                    </div>
+
+                    {/* Month/Year + Actions */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <select className="input-field" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m}>Tháng {m}</option>
+                            ))}
+                        </select>
+                        <select className="input-field" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
+                            {[2023, 2024, 2025, 2026].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                        <button className="btn-primary" onClick={() => setShowScan(true)}>
+                            📷 Scan hóa đơn
+                        </button>
+                        <button className="btn-primary" onClick={() => setShowAdd(true)}>
+                            ➕ Thêm giao dịch
                         </button>
                     </div>
                 </div>
-            </nav>
 
-            <main className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="rounded-lg bg-white p-6 shadow">
-                    <h2 className="mb-4 text-2xl font-bold text-gray-800">Quản lý tài chính cá nhân</h2>
-                    <p className="text-gray-600">Giao diện tải hóa đơn và biểu đồ chi tiêu sẽ được hiển thị tại đây.</p>
-                    {/* Nơi bạn sẽ ghép component Upload Hóa Đơn vào sau này */}
-                </div>
+                {/* Stats Cards */}
+                {(activePage === 'overview' || activePage === 'transactions') && (
+                    <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+                        <StatsCard
+                            title={`Chi tiêu tháng ${month}`}
+                            value={fmt(stats?.totalExpense || 0)}
+                            icon="💸" color="#ef4444" trend="down"
+                        />
+                        <StatsCard
+                            title={`Thu nhập tháng ${month}`}
+                            value={fmt(stats?.totalIncome || 0)}
+                            icon="💰" color="#10b981" trend="up"
+                        />
+                        <StatsCard
+                            title="Số giao dịch"
+                            value={`${stats?.transactionCount || 0}`}
+                            icon="📋" color="#6366f1"
+                            subtitle={`tháng ${month}/${year}`}
+                        />
+                        <StatsCard
+                            title="Danh mục nhiều nhất"
+                            value={topCategory ? `${topCategory.icon} ${topCategory.name}` : '—'}
+                            icon="🏆" color="#f59e0b"
+                            subtitle={topCategory ? fmt(parseFloat(topCategory.total)) : ''}
+                        />
+                    </div>
+                )}
+
+                {/* Charts — chỉ hiện ở trang overview */}
+                {activePage === 'overview' && stats && (
+                    <div style={{ marginBottom: 24 }}>
+                        <ExpenseChart
+                            byCategory={stats.byCategory}
+                            last6Months={stats.last6Months}
+                        />
+                    </div>
+                )}
+
+                {/* Transaction Table */}
+                {(activePage === 'overview' || activePage === 'transactions') && (
+                    <ExpenseTable
+                        expenses={expenses}
+                        onDelete={handleDelete}
+                        loading={loading}
+                    />
+                )}
+
+                {/* Scan Page */}
+                {activePage === 'scan' && (
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
+                        <div className="glass-card animate-fade-in" style={{ padding: 48, textAlign: 'center', maxWidth: 480 }}>
+                            <div style={{ fontSize: 64, marginBottom: 20 }}>🧾</div>
+                            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', marginBottom: 12 }}>
+                                Nhận diện hóa đơn bằng AI
+                            </h2>
+                            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>
+                                Chụp ảnh hóa đơn và để AI tự động bóc tách tên cửa hàng, ngày tháng và tổng tiền. Sau đó lưu trực tiếp vào giao dịch.
+                            </p>
+                            <button className="btn-primary" onClick={() => setShowScan(true)} style={{ fontSize: 15, padding: '12px 32px' }}>
+                                📷 Bắt đầu scan
+                            </button>
+                        </div>
+                    </div>
+                )}
             </main>
+
+            {showAdd && (
+                <AddExpenseModal onClose={() => setShowAdd(false)} onSuccess={loadData} />
+            )}
+            {showScan && (
+                <ScanReceiptModal onClose={() => setShowScan(false)} onSuccess={loadData} />
+            )}
         </div>
     );
 };

@@ -15,6 +15,6 @@ export class User {
     @Column({ type: 'varchar', length: 255, nullable: true })
     full_name: string;
 
-    @CreateDateColumn()
-    created_at: Date;
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
 }
