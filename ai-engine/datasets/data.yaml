@@ -1,13 +1,13 @@
-train: train/images
-val: train/images
-test: train/images
+train: ../train/images
+val: ../valid/images
+test: ../test/images
 
 nc: 3
 names: ['Date', 'Store_Name', 'Total_Amount']
 
 roboflow:
   workspace: vans-workspace-wzeag
-  project: vans-workspace-wzeag
-  version: dataset
-  license: Private
-  url: https://app.roboflow.com/vans-workspace-wzeag/vans-workspace-wzeag/dataset
+  project: nhan-dien-hoa-don-fhh51
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/vans-workspace-wzeag/nhan-dien-hoa-don-fhh51/dataset/2
