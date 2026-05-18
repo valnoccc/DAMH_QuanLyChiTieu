@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
                             ))}
                         </select>
                         <select className="input-field" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
-                            {[2023, 2024, 2025, 2026].map(y => (
+                            {[2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026].map(y => (
                                 <option key={y} value={y}>{y}</option>
                             ))}
                         </select>
@@ -156,7 +156,20 @@ const Dashboard: React.FC = () => {
                 <AddExpenseModal onClose={() => setShowAdd(false)} onSuccess={loadData} />
             )}
             {showScan && (
-                <ScanReceiptModal onClose={() => setShowScan(false)} onSuccess={loadData} />
+                <ScanReceiptModal
+                    onClose={() => setShowScan(false)}
+                    onSuccess={(savedDate?: string) => {
+                        // Tự động nhảy sang tháng/năm của hóa đơn vừa lưu
+                        if (savedDate) {
+                            const d = new Date(savedDate);
+                            if (!isNaN(d.getTime())) {
+                                setMonth(d.getMonth() + 1);
+                                setYear(d.getFullYear());
+                            }
+                        }
+                        loadData();
+                    }}
+                />
             )}
         </div>
     );

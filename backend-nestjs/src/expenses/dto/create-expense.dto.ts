@@ -3,7 +3,7 @@ import { ExpenseType } from '../entities/expense.entity';
 
 export class CreateExpenseDto {
   @IsString()
-  storeName: string;
+  title: string;
 
   @IsNumber()
   @IsPositive()
@@ -18,7 +18,7 @@ export class CreateExpenseDto {
   description?: string;
 
   @IsDateString()
-  transactionDate: string;
+  date: string;
 
   @IsOptional()
   @IsEnum(ExpenseType)

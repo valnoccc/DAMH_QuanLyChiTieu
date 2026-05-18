@@ -121,12 +121,16 @@ async def predict_receipt(file: UploadFile = File(...)):
                 
                 elif class_name == "Date":
                     # Ép tìm đúng định dạng Ngày/Tháng/Năm (có thể cách nhau bằng khoảng trắng)
-                    date_match = re.search(r'\d{2}[-/\s.]\d{2}[-/\s.]\d{4}', extracted_text)
+                    date_match = re.search(r'(\d{2})[-/\s.](\d{2})[-/\s.](\d{4})', extracted_text)
                     if date_match:
-                        # Đưa về chuẩn dd/mm/yyyy
-                        clean_text = re.sub(r'[-\s.]', '/', date_match.group(0))
+                        day, month, year = int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3))
+                        # Kiểm tra giá trị hợp lệ: ngày 01-31, tháng 01-12, năm hợp lý
+                        if 1 <= day <= 31 and 1 <= month <= 12 and 2000 <= year <= 2099:
+                            clean_text = f"{date_match.group(1)}/{date_match.group(2)}/{date_match.group(3)}"
+                        else:
+                            # Ngày/tháng vô lý (vd: 37/10, 00/13) -> bỏ qua
+                            clean_text = ""
                     else:
-                        # Nếu YOLO khoanh nhầm mã hóa đơn, Regex không tìm thấy ngày -> Bỏ qua box này
                         clean_text = ""
                 
                 elif class_name == "Store_Name":
@@ -163,10 +167,12 @@ async def predict_receipt(file: UploadFile = File(...)):
                         detections.append({"label": "Store_Name", "confidence": 0.85, "box": [0,0,0,0], "text": store_name})
                 
                 if 'Date' in missing_labels:
-                    date_match = re.search(r'\d{2}[-/\s.]\d{2}[-/\s.]\d{4}', full_text)
+                    date_match = re.search(r'(\d{2})[-/\s.](\d{2})[-/\s.](\d{4})', full_text)
                     if date_match:
-                        clean_date = re.sub(r'[-\s.]', '/', date_match.group(0))
-                        detections.append({"label": "Date", "confidence": 0.90, "box": [0,0,0,0], "text": clean_date})
+                        day, month, year = int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3))
+                        if 1 <= day <= 31 and 1 <= month <= 12 and 2000 <= year <= 2099:
+                            clean_date = f"{date_match.group(1)}/{date_match.group(2)}/{date_match.group(3)}"
+                            detections.append({"label": "Date", "confidence": 0.90, "box": [0,0,0,0], "text": clean_date})
                     
                 if 'Total_Amount' in missing_labels:
                     total_text = ""
